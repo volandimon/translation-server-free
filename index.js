@@ -4,6 +4,7 @@ import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const API_KEY = 'a41e9b44-e608-4253-80c2-8f1d388b52fc:fx';
 
 app.use(cors());
 app.use(express.json());
@@ -14,38 +15,39 @@ app.post("/translate", async (req, res) => {
   console.log("Received request:", { texts, from, to });
 
   if (!Array.isArray(texts) || !from || !to) {
-    console.error("❌ Invalid request: Missing or invalid parameters.");
     return res.status(400).json({ error: "Missing or invalid parameters" });
   }
 
   try {
     const results = await Promise.all(
       texts.map(async (text) => {
-        console.log(`Translating: "${text}"`);
+        console.log(`Translating: "{text}"`);
 
         try {
-          const response = await fetch("https://libretranslate.com/translate", {
+          const response = await fetch("https://api-free.deepl.com/v2/translate", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              q: text,
-              source: from,
-              target: to,
-              format: "text"
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Authorization": `DeepL-Auth-Key ${API_KEY}`
+            },
+            body: new URLSearchParams({
+              text,
+              source_lang: from.toUpperCase(),
+              target_lang: to.toUpperCase()
             })
           });
 
           const data = await response.json();
-          
-          if (!data.translatedText) {
-            console.error(`❌ Translation failed for "${text}". Response:`, data);
+
+          if (!data.translations || !data.translations[0]) {
+            console.error(`❌ Translation failed for "{text}". Response:`, data);
             return null;
           }
 
-          console.log(`✔️ Translated "${text}" → "${data.translatedText}"`);
-          return data.translatedText;
+          console.log(`✔️ Translated "{text}" → "{data.translations[0].text}"`);
+          return data.translations[0].text;
         } catch (err) {
-          console.error(`❌ Error translating "${text}":`, err.message);
+          console.error(`❌ Error translating "{text}":`, err.message);
           return null;
         }
       })
